@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Projets</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+@font-face {
+  font-family: 'Marianne';
+  src: local('Marianne'), url('https://gouvfr.atlassian.net/wiki/download/attachments/270401569/Marianne-Regular.woff2') format('woff2');
+}
+
+:root {
+  --bleu: #000091;
+  --bleu-clair: #e3e3fd;
+  --fond: #f6f6f9;
+  --carte: #ffffff;
+  --texte: #1e1e1e;
+  --texte-att: #666666;
+  --bordure: #e0e0e6;
+
+  --c-termine: #18753c;
+  --c-termine-fond: #e8f5ec;
+  --c-encours: #0063cb;
+  --c-encours-fond: #e5f0fc;
+  --c-retard: #ce0500;
+  --c-retard-fond: #fbe6e5;
+  --c-bloque: #716043;
+  --c-bloque-fond: #f0ece5;
+  --c-neutre: #666666;
+  --c-neutre-fond: #ececec;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Marianne', Arial, sans-serif;
+  background: var(--fond);
+  color: var(--texte);
+  padding: 24px;
+  line-height: 1.5;
+}
+
+/* ---------- barre d'outils ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.toolbar input, .toolbar select {
+  font-family: inherit;
+  padding: 9px 12px;
+  border: 1px solid #c6c6cc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  color: var(--texte);
+}
+
+.toolbar input#recherche { flex: 1 1 240px; }
+.toolbar select { flex: 0 0 auto; }
+
+.toolbar input:focus, .toolbar select:focus {
+  outline: none;
+  border-color: var(--bleu);
+  box-shadow: 0 0 0 2px rgba(0,0,145,0.15);
+}
+
+.compteur {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--texte-att);
+  white-space: nowrap;
+}
+
+/* ---------- grille de cartes ---------- */
+#gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.carte {
+  background: var(--carte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.carte:hover {
+  border-color: var(--bleu);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.carte-entete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icone {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: white;
+}
+
+.carte-titres { min-width: 0; }
+
+.carte-nom {
+  font-weight: 700;
+  font-size: 0.98rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carte-mission {
+  font-size: 0.8rem;
+  color: var(--texte-att);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carte-responsable {
+  font-size: 0.82rem;
+  color: var(--texte-att);
+}
+
+.progress-bar {
+  height: 6px;
+  background: #eceaf6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--bleu);
+  border-radius: 3px;
+}
+
+.carte-bas {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-txt {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--bleu);
+}
+
+.pastille {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pastille.termine { color: var(--c-termine); background: var(--c-termine-fond); }
+.pastille.en-cours { color: var(--c-encours); background: var(--c-encours-fond); }
+.pastille.en-retard { color: var(--c-retard); background: var(--c-retard-fond); }
+.pastille.bloque { color: var(--c-bloque); background: var(--c-bloque-fond); }
+.pastille.aucune-tache { color: var(--c-neutre); background: var(--c-neutre-fond); }
+
+.vide {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--texte-att);
+  background: var(--carte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+}
+
+/* ---------- vue détail ---------- */
+#detail { display: none; }
+
+.retour {
+  background: none;
+  border: none;
+  color: var(--bleu);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 18px;
+}
+.retour:hover { text-decoration: underline; }
+
+.fiche {
+  background: var(--carte);
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fiche-entete {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--bordure);
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.fiche-icone {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.fiche-titre-bloc { flex: 1; min-width: 0; }
+
+.fiche-titre {
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fiche-id {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--texte-att);
+  font-family: monospace;
+}
+
+.fiche-mission {
+  font-size: 0.9rem;
+  color: var(--bleu);
+  margin-top: 4px;
+}
+
+.fiche-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--texte-att);
+}
+
+.fiche-meta strong { color: var(--texte); font-weight: 600; }
+
+.fiche-progress {
+  min-width: 220px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.fiche-progress .progress-bar { margin-bottom: 6px; height: 8px; }
+
+.fiche-description {
+  padding: 18px 28px 0;
+  font-size: 0.92rem;
+  color: var(--texte);
+  white-space: pre-wrap;
+}
+
+.taches-zone { padding: 22px 28px 28px; }
+
+.taches-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.taches-titre { font-size: 1.1rem; font-weight: 700; }
+
+.taches-resume { font-size: 0.82rem; color: var(--texte-att); }
+
+table.taches {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+}
+
+table.taches th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--bordure);
+  color: var(--texte-att);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+table.taches td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--bordure);
+  vertical-align: top;
+}
+
+table.taches tr:hover td { background: #fafafd; }
+
+.tache-frein { color: var(--c-retard); font-style: italic; }
+.tache-vide { color: var(--texte-att); }
+
+@media (max-width: 700px) {
+  .fiche-entete { flex-direction: column; }
+  .fiche-progress { text-align: left; width: 100%; }
+  table.taches, table.taches thead, table.taches tbody, table.taches th, table.taches td, table.taches tr { display: block; }
+  table.taches thead { display: none; }
+  table.taches tr { border-bottom: 1px solid var(--bordure); padding: 8px 0; }
+  table.taches td { border: none; padding: 3px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar" id="toolbar">
+  <input id="recherche" type="search" placeholder="Rechercher un projet...">
+  <select id="filtreResponsable"><option value="">Tous les responsables</option></select>
+  <select id="filtreMission"><option value="">Toutes les missions</option></select>
+  <select id="tri">
+    <option value="nom">Nom (A → Z)</option>
+    <option value="progression-desc">Progression (décroissante)</option>
+    <option value="progression-asc">Progression (croissante)</option>
+    <option value="echeance">Échéance la plus proche</option>
+  </select>
+  <span class="compteur" id="compteur"></span>
+</div>
+
+<div id="gallery"></div>
+
+<div id="detail">
+  <button class="retour" id="btnRetour">← Retour aux projets</button>
+  <div class="fiche" id="ficheContenu"></div>
+</div>
+
+<script>
+grist.ready({
+  requiredAccess: "full",
+  columns: [
+    {name: "Projet", title: "Nom du projet", type: "Text", optional: false},
+    {name: "Mission", title: "Mission associée", type: "Ref", optional: true},
+    {name: "Description", title: "Description", type: "Text", optional: true},
+    {name: "Responsable_projet", title: "Responsable", type: "Ref", optional: true},
+    {name: "Date_debut", title: "Date de début", type: "Date", optional: true},
+    {name: "Date_fin_prevue", title: "Date de fin prévue", type: "Date", optional: true}
+  ]
+});
+
+let projets = [], taches = [], agents = [], missions = [];
+
+grist.onRecords(function (records) {
+  Promise.all([
+    grist.docApi.fetchTable("Taches"),
+    grist.docApi.fetchTable("Agents"),
+    grist.docApi.fetchTable("Missions")
+  ]).then(function ([tachesData, agentsData, missionsData]) {
+    taches = versLignes(tachesData);
+    agents = versLignes(agentsData);
+    missions = versLignes(missionsData);
+    projets = records.map(enrichirProjet);
+
+    remplirFiltres();
+    afficherProjets();
+  });
+});
+
+// grist.docApi.fetchTable renvoie des colonnes (arrays) plutôt que des lignes : on convertit
+function versLignes(table) {
+  const cles = Object.keys(table).filter(k => k !== 'id');
+  const n = table.id.length;
+  const lignes = [];
+  for (let i = 0; i < n; i++) {
+    const ligne = { id: table.id[i] };
+    cles.forEach(c => ligne[c] = table[c][i]);
+    lignes.push(ligne);
+  }
+  return lignes;
+}
+
+function idRef(valeur) {
+  if (valeur == null) return null;
+  return typeof valeur === 'object' ? valeur.id : valeur;
+}
+
+function trouverAgent(refValeur) {
+  const id = idRef(refValeur);
+  return id ? agents.find(a => a.id === id) : null;
+}
+
+function nomAgent(agent) {
+  if (!agent) return "Non assigné";
+  return [agent.Prenom, agent.Nom].filter(Boolean).join(" ") || "Sans nom";
+}
+
+function initiales(texte) {
+  return String(texte || "?").trim().split(/\s+/).slice(0, 2).map(m => m[0] || "").join("").toUpperCase() || "?";
+}
+
+const PALETTE_ICONES = ["#000091", "#6a6af4", "#18753c", "#b34000", "#5e2c6b", "#0063cb", "#716043"];
+function couleurIcone(texte) {
+  let h = 0;
+  for (let i = 0; i < String(texte).length; i++) h = (h * 31 + String(texte).charCodeAt(i)) >>> 0;
+  return PALETTE_ICONES[h % PALETTE_ICONES.length];
+}
+
+function formatDate(date) {
+  if (!date) return "—";
+  const d = new Date(date * 1000 || date);
+  if (isNaN(d)) return "—";
+  return d.toLocaleDateString("fr-FR", { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function enrichirProjet(p) {
+  const tachesProjet = taches.filter(t => idRef(t.Projet) === p.id);
+  const termine = tachesProjet.filter(t => t.Statut === "Terminé").length;
+  const progression = tachesProjet.length ? Math.round((termine / tachesProjet.length) * 100) : 0;
+
+  let statut = "Aucune tâche";
+  if (tachesProjet.length) {
+    const aujourdhui = new Date(); aujourdhui.setHours(0,0,0,0);
+    const enRetard = tachesProjet.some(t => t.Date_butoire && new Date(t.Date_butoire * 1000 || t.Date_butoire) < aujourdhui && t.Statut !== "Terminé");
+    const bloque = tachesProjet.some(t => t.Statut === "Bloqué");
+    if (progression === 100) statut = "Terminé";
+    else if (enRetard) statut = "En retard";
+    else if (bloque) statut = "Bloqué";
+    else statut = "En cours";
+  }
+
+  return Object.assign({}, p, {
+    taches: tachesProjet,
+    progression,
+    statut,
+    responsableObj: trouverAgent(p.Responsable_projet),
+    missionObj: idRef(p.Mission) ? missions.find(m => m.id === idRef(p.Mission)) : null
+  });
+}
+
+function classeStatut(statut) {
+  return {
+    "Terminé": "termine",
+    "En cours": "en-cours",
+    "En retard": "en-retard",
+    "Bloqué": "bloque",
+    "Aucune tâche": "aucune-tache"
+  }[statut] || "aucune-tache";
+}
+
+function remplirFiltres() {
+  const selResp = document.getElementById("filtreResponsable");
+  const selMission = document.getElementById("filtreMission");
+  const respActuel = selResp.value, missionActuel = selMission.value;
+
+  const respIds = [...new Set(projets.map(p => p.responsableObj && p.responsableObj.id).filter(Boolean))];
+  const missionIds = [...new Set(projets.map(p => p.missionObj && p.missionObj.id).filter(Boolean))];
+
+  selResp.innerHTML = '<option value="">Tous les responsables</option>' +
+    respIds.map(id => {
+      const a = agents.find(x => x.id === id);
+      return `<option value="${id}">${nomAgent(a)}</option>`;
+    }).join("");
+
+  selMission.innerHTML = '<option value="">Toutes les missions</option>' +
+    missionIds.map(id => {
+      const m = missions.find(x => x.id === id);
+      return `<option value="${id}">${m ? m.Mission : ""}</option>`;
+    }).join("");
+
+  selResp.value = respActuel;
+  selMission.value = missionActuel;
+}
+
+function afficherProjets() {
+  const recherche = document.getElementById("recherche").value.toLowerCase().trim();
+  const filtreResp = document.getElementById("filtreResponsable").value;
+  const filtreMission = document.getElementById("filtreMission").value;
+  const tri = document.getElementById("tri").value;
+
+  let liste = projets.filter(p => {
+    if (filtreResp && (!p.responsableObj || String(p.responsableObj.id) !== filtreResp)) return false;
+    if (filtreMission && (!p.missionObj || String(p.missionObj.id) !== filtreMission)) return false;
+    if (recherche) {
+      const texte = [p.Projet, p.Description, p.missionObj && p.missionObj.Mission, p.responsableObj && nomAgent(p.responsableObj)]
+        .filter(Boolean).join(" ").toLowerCase();
+      if (!texte.includes(recherche)) return false;
+    }
+    return true;
+  });
+
+  liste.sort((a, b) => {
+    if (tri === "nom") return (a.Projet || "").localeCompare(b.Projet || "");
+    if (tri === "progression-desc") return b.progression - a.progression;
+    if (tri === "progression-asc") return a.progression - b.progression;
+    if (tri === "echeance") {
+      const da = a.Date_fin_prevue ? new Date(a.Date_fin_prevue * 1000 || a.Date_fin_prevue).getTime() : Infinity;
+      const db = b.Date_fin_prevue ? new Date(b.Date_fin_prevue * 1000 || b.Date_fin_prevue).getTime() : Infinity;
+      return da - db;
+    }
+    return 0;
+  });
+
+  const gallery = document.getElementById("gallery");
+  if (!liste.length) {
+    gallery.innerHTML = '<div class="vide">Aucun projet ne correspond à ces critères.</div>';
+    document.getElementById("compteur").textContent = "0 projet";
+    return;
+  }
+
+  gallery.innerHTML = liste.map(p => `
+    <div class="carte" data-id="${p.id}">
+      <div class="carte-entete">
+        <div class="icone" style="background:${couleurIcone(p.Projet || p.id)}">${initiales(p.Projet)}</div>
+        <div class="carte-titres">
+          <div class="carte-nom">${p.Projet || "Projet sans nom"}</div>
+          <div class="carte-mission">${p.missionObj ? p.missionObj.Mission : "Aucune mission"}</div>
+        </div>
+      </div>
+      <div class="carte-responsable">${nomAgent(p.responsableObj)}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.progression}%"></div></div>
+      <div class="carte-bas">
+        <span class="progress-txt">${p.progression}%</span>
+        <span class="pastille ${classeStatut(p.statut)}">${p.statut}</span>
+      </div>
+    </div>
+  `).join("");
+
+  document.getElementById("compteur").textContent = `${liste.length} projet${liste.length > 1 ? "s" : ""}`;
+
+  gallery.querySelectorAll(".carte").forEach(carte => {
+    carte.addEventListener("click", () => ouvrirProjet(Number(carte.dataset.id)));
+  });
+}
+
+function ouvrirProjet(id) {
+  const p = projets.find(x => x.id === id);
+  if (!p) return;
+  grist.setCursorPos({ rowId: id });
+
+  const tachesTerminees = p.taches.filter(t => t.Statut === "Terminé").length;
+
+  const lignesTaches = p.taches.length ? p.taches.map(t => {
+    const resp = trouverAgent(t.Responsable);
+    const contribIds = Array.isArray(t.Contributeurs) ? t.Contributeurs.filter(v => typeof v === 'number') : [];
+    const contribNoms = contribIds.map(cid => nomAgent(agents.find(a => a.id === cid))).join(", ") || "—";
+    const statutTache = t.Statut || "À faire";
+    return `
+      <tr>
+        <td>${t.Tache || "—"}</td>
+        <td>${nomAgent(resp)}</td>
+        <td>${contribNoms}</td>
+        <td>${formatDate(t.Date_debut)}</td>
+        <td>${formatDate(t.Date_butoire)}</td>
+        <td><span class="pastille ${classeStatut(statutTache === 'À faire' ? 'Aucune tâche' : statutTache)}">${statutTache}</span></td>
+        <td class="${t.Frein ? 'tache-frein' : 'tache-vide'}">${t.Frein || "Aucun"}</td>
+      </tr>`;
+  }).join("") : `<tr><td colspan="7" class="tache-vide">Aucune tâche associée à ce projet.</td></tr>`;
+
+  document.getElementById("ficheContenu").innerHTML = `
+    <div class="fiche-entete">
+      <div class="fiche-icone" style="background:${couleurIcone(p.Projet || p.id)}">${initiales(p.Projet)}</div>
+      <div class="fiche-titre-bloc">
+        <div class="fiche-titre">${p.Projet || "Projet sans nom"} <span class="fiche-id">${p.ID_projet || ""}</span></div>
+        <div class="fiche-mission">${p.missionObj ? p.missionObj.Mission : "Aucune mission associée"}</div>
+        <div class="fiche-meta">
+          <span>Responsable : <strong>${nomAgent(p.responsableObj)}</strong></span>
+          <span>Début : <strong>${formatDate(p.Date_debut)}</strong></span>
+          <span>Fin prévue : <strong>${formatDate(p.Date_fin_prevue)}</strong></span>
+        </div>
+      </div>
+      <div class="fiche-progress">
+        <div class="progress-bar"><div class="progress-fill" style="width:${p.progression}%"></div></div>
+        <span class="pastille ${classeStatut(p.statut)}">${p.progression}% · ${p.statut}</span>
+      </div>
+    </div>
+    ${p.Description ? `<div class="fiche-description">${p.Description}</div>` : ""}
+    <div class="taches-zone">
+      <div class="taches-entete">
+        <span class="taches-titre">Tâches (${p.taches.length})</span>
+        <span class="taches-resume">${tachesTerminees} terminée${tachesTerminees > 1 ? "s" : ""} sur ${p.taches.length}</span>
+      </div>
+      <table class="taches">
+        <thead>
+          <tr><th>Tâche</th><th>Responsable</th><th>Contributeurs</th><th>Début</th><th>Échéance</th><th>Statut</th><th>Frein</th></tr>
+        </thead>
+        <tbody>${lignesTaches}</tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById("toolbar").style.display = "none";
+  document.getElementById("gallery").style.display = "none";
+  document.getElementById("detail").style.display = "block";
+  window.scrollTo(0, 0);
+}
+
+document.getElementById("btnRetour").addEventListener("click", () => {
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("toolbar").style.display = "flex";
+  document.getElementById("gallery").style.display = "grid";
+});
+
+document.getElementById("recherche").addEventListener("input", afficherProjets);
+document.getElementById("filtreResponsable").addEventListener("change", afficherProjets);
+document.getElementById("filtreMission").addEventListener("change", afficherProjets);
+document.getElementById("tri").addEventListener("change", afficherProjets);
+</script>
+</body>
+</html>
